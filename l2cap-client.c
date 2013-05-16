@@ -1,28 +1,31 @@
 #include <stdio.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/rfcomm.h>
+#include <bluetooth/l2cap.h>
 
 int main(int argc, char **argv)
 {
-    struct sockaddr_rc addr = { 0 };
+    struct sockaddr_l2 addr = { 0 };
     int s, status;
-    char *dest =  argv[1]; //"01:23:45:67:89:AB";
+    char *message = "hello!";
+    char dest[18];
 
-    if( argc < 3)
+    if(argc < 3)
     {
-      printf("usage: %s <bt-address> <bt-port>\n", argv[0]);
-      return 1;
+        fprintf(stderr, "usage: %s <bt_addr> <l2cap_port>\n", argv[0]);
+        exit(2);
     }
 
+    strncpy(dest, argv[1], 18);
+
     // allocate a socket
-    s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+    s = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 
     // set the connection parameters (who to connect to)
-    addr.rc_family = AF_BLUETOOTH;
-    addr.rc_channel = (uint8_t) atoi(argv[2]);
-    str2ba( dest, &addr.rc_bdaddr );
+    addr.l2_family = AF_BLUETOOTH;
+    addr.l2_psm = htobs(atoi(argv[2]));
+    str2ba( dest, &addr.l2_bdaddr );
 
     // connect to server
     status = connect(s, (struct sockaddr *)&addr, sizeof(addr));
@@ -35,6 +38,5 @@ int main(int argc, char **argv)
     if( status < 0 ) perror("uh oh");
 
     close(s);
-    return 0;
 }
 

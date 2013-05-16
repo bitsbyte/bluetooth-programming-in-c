@@ -1,30 +1,31 @@
 #include <stdio.h>
-#include <unistd.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/rfcomm.h>
+#include <bluetooth/l2cap.h>
 
 int main(int argc, char **argv)
 {
-    struct sockaddr_rc loc_addr = { 0 }, rem_addr = { 0 };
+    struct sockaddr_l2 loc_addr = { 0 }, rem_addr = { 0 };
     char buf[1024] = { 0 };
     int s, client, bytes_read;
     socklen_t opt = sizeof(rem_addr);
 
-    if( argc < 2 )
-    {	
-      printf("usage: %s <bt-port> \n", argv[0]);
+    if( argc < 2)
+    {
+      printf("usage: %s <l2cap-port>\n",argv[0]);
       return 1;
     }
 
     // allocate socket
-    s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+    s = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 
     // bind socket to port of the first available 
-    // local bluetooth adapter
-    loc_addr.rc_family = AF_BLUETOOTH;
-    loc_addr.rc_bdaddr = *BDADDR_ANY;
-    loc_addr.rc_channel = (uint8_t) atoi(argv[1]);
+    // bluetooth adapter
+    loc_addr.l2_family = AF_BLUETOOTH;
+    loc_addr.l2_bdaddr = *BDADDR_ANY;
+    loc_addr.l2_psm = htobs(atoi(argv[1]));
+
     bind(s, (struct sockaddr *)&loc_addr, sizeof(loc_addr));
 
     // put socket into listening mode
@@ -33,8 +34,9 @@ int main(int argc, char **argv)
     // accept one connection
     client = accept(s, (struct sockaddr *)&rem_addr, &opt);
 
-    ba2str( &rem_addr.rc_bdaddr, buf );
+    ba2str( &rem_addr.l2_bdaddr, buf );
     fprintf(stderr, "accepted connection from %s\n", buf);
+
     memset(buf, 0, sizeof(buf));
 
     // read data from the client
@@ -46,5 +48,5 @@ int main(int argc, char **argv)
     // close connection
     close(client);
     close(s);
-    return 0;
 }
+
